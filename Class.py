@@ -43,7 +43,8 @@ class Item:
         self.itemOnHand = Item_on_hand
         self.unitPrice = Unit_price
         self.orderPlaced = Order_placed
- 
+    def __str__(self): 
+        return "Test  upc:% s desc:%s itemOnHand:%s " % (self.upc,self.description,self.itemOnHand) 
 #Create Replinishment class
 class Replinishment:
     def __init__(self,upc, description , orderQty, orderDate, orderedBy, status) :
@@ -64,6 +65,9 @@ class Sale:
         self.orderDate=orderdate
         self.itemPrice=itemPrice
         self.orderedBy=orderedby
+
+    def __str__(self): 
+        return "Test receiptNo:% s upc:% s desc:%s quan:%s order:%s itemPrice:%s" % (self.receiptNo, self.upc,self.description,self.quantity,self.orderDate,self.itemPrice) 
         
         
  
@@ -139,9 +143,10 @@ class Store:
                         orderDate = row[4]
                         itemPrice = row[5]
                         orderedBy =  row[6] if row[6] else ''
-                        
+                        print( receiptNo, upc, description, quantity, orderDate, itemPrice,orderedBy)
                         sales = Sale(receiptNo, upc, description, quantity, orderDate, itemPrice,orderedBy)
                         salesKey = str(receiptNo)+str(upc) #key is a unique combination of both these
+                        print(salesKey)
                         self.salesDictionary.update({salesKey: sales})    
             
             
@@ -347,15 +352,15 @@ class Store:
                     
     def returnItem(self):
        returnOption = int(input("1 = Return few items   2 = Return all items   9 = Exit \n"))
-       enteredReceiptNo = input("Please enter the receipt number: ")
+       
        shouldContinue = 'y'
        continueReturn ='y'
        countItems = 0
        
        if returnOption==1  :#return few items
+           enteredReceiptNo = input("Please enter the receipt number: ")
+          
            for key, value in self.salesDictionary.items():
-                print(self.salesDictionary.get(key).receiptNo)
-                print(enteredReceiptNo)
                 if enteredReceiptNo == self.salesDictionary.get(key).receiptNo:
                     shouldContinue='y'
                     break
@@ -366,36 +371,40 @@ class Store:
            if shouldContinue == 'n':
                print("Invalid receipt number.Try again")
           
-          #receipt present              
+          #receipt present
+                         
            while(shouldContinue == 'y'):
                enteredUpc = input("Please enter UPC to be returned: ")
+               isUpcFound=False
                for key, value in self.salesDictionary.items():
-                   print(key, value)
-                   if enteredUpc == self.salesDictionary.get(key).upc:
-                                
+                  
+                   if enteredUpc == self.salesDictionary.get(key).upc and enteredReceiptNo == self.salesDictionary.get(key).receiptNo:
+                                print(self.salesDictionary.get(key))
+                                isUpcFound=True
+                                shouldContinue='n'
                             #return can be processed
                                 countItems = countItems+1
                                 print("You entered " + self.salesDictionary.get(key).description)
-                                enteredQuantity = int(input("Please enter quantity: "))
-                                if enteredQuantity <= self.salesDictionary.get(key).quantity:
-                                    returnAmount = self.salesDictionary.get(key).itemPrice*enteredQuantity
-                                    print("Return amount: $" +str(returnAmount))
-                                else:
-                                    print("Invalid selection. Try again.")
-                                    break
+                                while(True):
+                                    enteredQuantity = int(input("Please enter quantity: "))
+                                    if enteredQuantity <= self.salesDictionary.get(key).quantity:
+                                        returnAmount = self.salesDictionary.get(key).itemPrice*enteredQuantity
+                                        print("Return amount: $" +str(returnAmount))
+                                        break
+                                    else:
+                                        print("Invalid Quantity selection. Try again.")
                                 
                                 #changes in salesDictionary and csv
                                 self.salesDictionary.get(key).quantity = self.salesDictionary.get(key).quantity - enteredQuantity
                                 #self.salesDictionary.get(key).lineTotal = self.salesDictionary.get(key).lineTotal - returnAmount
                                 
                                 #changes in itemsDictioanry
-                                for key2, value in self.itemsDictionary.items():
-                                    if self.itemsDictionary.get(key2).upc==enteredUpc:
-                                        self.itemsDictionary.get(key2).itemOnHand = self.itemsDictionary.get(key2).itemOnHand+enteredQuantity
-                                    else:
-                                        print("ERROR: entered UPC doesnt exist in Items ")
-                                        break
-                                
+                                if enteredUpc in self.itemsDictionary:
+                                        print( self.itemsDictionary.get(enteredUpc))
+                                        self.itemsDictionary.get(enteredUpc).itemOnHand = self.itemsDictionary.get(enteredUpc).itemOnHand+enteredQuantity
+                                else:    
+                                    print("ERROR: Entered UPC doesnt exist in Retail file.")
+                                    break    
                                 #changes in sales.csv
                                 with open(self.salesFile, 'w', newline="") as csvfile:
                                     lines = csv.writer(csvfile)#, fieldnames=fieldNames)
@@ -435,76 +444,83 @@ class Store:
                                                 ]   
                                         lines.writerow(row)
                                 
-                                continueReturn = int(input("Return another item?(y/n) :"))
+                                continueReturn = input("Return another item?(y/n) :")
                                 if continueReturn=='y':
                                     shouldContinue = 'y'
                                 else:
                                     print(str(countItems)+" items returned for " +enteredReceiptNo)
-                                    break                
-                   else:
-                        print("Invalid UPC. Try again.")
-                        shouldContinue = 'y'
+                                    break 
+
+               if not isUpcFound:
+                    print("Invalid UPC. Try again.")
+                    shouldContinue = 'y'
                                 
                             
        elif returnOption == 2:# return all items
-           for key, value in self.salesDictionary.items():
-                if enteredReceiptNo == self.salesDictionary.get(key).receiptNo:
-                    
-                    returnedUpc=self.salesDictionary.get(key).upc
-                    returnedQuantity =self.salesDictionary.get(key).quantity
-                    
-                    #changes in salesDictionary
-                    self.salesDictionary.get(key).quantity=0    
-                    
-                    
-                    #changes in itemsDictioanry
-                    for key2, value in self.itemsDictionary.items():
-                        if self.itemsDictionary.get(key2).upc==returnedUpc:
-                            self.itemsDictionary.get(key2).itemOnHand = self.itemsDictionary.get(key2).itemOnHand + returnedQuantity
-                        else:
-                            print("ERROR: Entered UPC doesnt exist in Retail file.")    
-                                        
-                    #changes in sales.csv
-                    with open(self.salesFile, 'w', newline="") as csvfile:
+           enteredReceiptNo = input("Please enter the receipt number: ")
+           shouldReturnAll = input("Are you sure you want to return all items? y=yes,n=no ")
+           if shouldReturnAll == 'y':
+                receiptNumberFound =False
+                for key, value in self.salesDictionary.items():
+                        if enteredReceiptNo == self.salesDictionary.get(key).receiptNo:
+                            receiptNumberFound=True
+                            returnedUpc=self.salesDictionary.get(key).upc
+                            returnedQuantity =self.salesDictionary.get(key).quantity
+                            if not returnedQuantity == 0:
+                                returnAmount = self.salesDictionary.get(key).itemPrice*returnedQuantity
+                                print("You entered " + self.salesDictionary.get(key).description)
+                                print("Return amount: $" +str(returnAmount))
+                                #changes in salesDictionary
+                                self.salesDictionary.get(key).quantity=0    
+                                
+                                if returnedUpc in self.itemsDictionary:
+                                            print( self.itemsDictionary.get(returnedUpc))
+                                            self.itemsDictionary.get(returnedUpc).itemOnHand = self.itemsDictionary.get(returnedUpc).itemOnHand+returnedQuantity
+                                else:    
+                                        print("ERROR: Entered UPC doesnt exist in Retail file.")
+                                        break    
+
+                                #changes in sales.csv
+                                with open(self.salesFile, 'w', newline="") as csvfile:
                                     lines = csv.writer(csvfile)#, fieldnames=fieldNames)
                                     #headings = next(lines)
                                     #write header
-                                    lines.writerow(["upc", "description", "quantity", "orderDate" , "itemPrice", "orderedBy"])
+                                    lines.writerow(["receiptNo","upc", "description", "quantity", "orderDate" , "itemPrice", "orderedBy"])
                                                        
                                     #write rows if order not present already
                                     #checking orderPlaced column in items and if order is not fulfilled in replinishedmentorders
                                     for key,values in self.salesDictionary.items():
                                         row = [self.salesDictionary.get(key).receiptNo,
-                                               self.salesDictionary.get(key).upc,
-                                               self.salesDictionary.get(key).description,
-                                               self.salesDictionary.get(key).quantity,
-                                               self.salesDictionary.get(key).orderDate,
-                                               self.salesDictionary.get(key).itemPrice,
-                                               self.salesDictionary.get(key).orderedBy
-                                               ]
+                                                   self.salesDictionary.get(key).upc,
+                                                   self.salesDictionary.get(key).description,
+                                                   self.salesDictionary.get(key).quantity,
+                                                   self.salesDictionary.get(key).orderDate,
+                                                   self.salesDictionary.get(key).itemPrice,
+                                                   self.salesDictionary.get(key).orderedBy
+                                                   ]
                                         lines.writerow(row)
                                 
-                    #changes in retail csv
-                    with open(self.itemsFile, 'w', newline="") as csvfile:
-                                    lines = csv.writer(csvfile)#, fieldnames=fieldNames)
-                                    
-                                    #write header
-                                    lines.writerow(["upc", "description", "itemMaxQty", "orderThreshold" , "replinishmentOrderQty", "itemOnHand","unitPrice","orderPlaced"])
-                                   
-                                    for key, value in self.itemsDictionary.items():
-                                        row = [self.itemsDictionary.get(key).upc,
-                                                   self.itemsDictionary.get(key).description,
-                                                   self.itemsDictionary.get(key).itemMaxQty,
-                                                   self.itemsDictionary.get(key).orderThreshold,
-                                                   self.itemsDictionary.get(key).replinishmentOrderQty,
-                                                   self.itemsDictionary.get(key).itemOnHand, 
-                                                   self.itemsDictionary.get(key).unitPrice,
-                                                   self.itemsDictionary.get(key).orderPlaced
-                                                ]   
-                                        lines.writerow(row)
-                    
-                else:
-                    print("Invalid receipt number.Try again.")                
+                                #changes in retail csv
+                                with open(self.itemsFile, 'w', newline="") as csvfile:
+                                            lines = csv.writer(csvfile)#, fieldnames=fieldNames)
+                                            
+                                            #write header
+                                            lines.writerow(["upc", "description", "itemMaxQty", "orderThreshold" , "replinishmentOrderQty", "itemOnHand","unitPrice","orderPlaced"])
+                                        
+                                            for key, value in self.itemsDictionary.items():
+                                                row = [self.itemsDictionary.get(key).upc,
+                                                        self.itemsDictionary.get(key).description,
+                                                        self.itemsDictionary.get(key).itemMaxQty,
+                                                        self.itemsDictionary.get(key).orderThreshold,
+                                                        self.itemsDictionary.get(key).replinishmentOrderQty,
+                                                        self.itemsDictionary.get(key).itemOnHand, 
+                                                        self.itemsDictionary.get(key).unitPrice,
+                                                        self.itemsDictionary.get(key).orderPlaced
+                                                        ]   
+                                                lines.writerow(row)
+                if not receiptNumberFound:
+                            print("Invalid receipt number.Try again.")                
+    
            
        else: 
            print("Invalid selection. Try again.")
